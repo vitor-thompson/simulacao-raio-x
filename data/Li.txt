@@ -1,0 +1,24 @@
+Li
+# Z   A      rho
+  3   6.94   5.340e-01
+# coefficients for coherent scattering cross-section
+  -8.8336e-01 -6.3653e-01 +3.9005e-01 -3.0330e-01 +5.7436e-02 -3.5821e-03
+# coefficients for incoherent scattering cross-section
+  -3.4570e+00 +8.5405e-01 -1.0621e-01 +3.5671e-03 -3.3660e-03 +4.2513e-04
+# 
+K 
+# Eb         rs    w
+  +0.05480   +1.00 +9.0000e-05
+# coefficients for absorption cross-section
+  +5.4383e+00 -3.0535e+00 -1.2281e-01 +2.7905e-02 -4.6634e-03 +3.8504e-04
+# 
+# xray   rate        irate       hv
+*
+L1
+# Eb         rs    w
+  +0.00000   +1.00 +0.0000e+00
+# coefficients for absorption cross-section
+  +1.1720e+00 -3.0212e+00 -1.3214e-01 +2.9089e-02 -4.7139e-03 +3.8322e-04
+# 
+# xray   rate        irate       hv
+*

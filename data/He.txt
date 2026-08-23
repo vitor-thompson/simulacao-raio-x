@@ -1,0 +1,16 @@
+He
+# Z   A      rho
+  2   4.00   1.785e-04
+# coefficients for coherent scattering cross-section
+  -9.8668e-01 +7.0596e-02 -2.9672e-01 -8.9007e-02 +2.8971e-02 -2.2013e-03
+# coefficients for incoherent scattering cross-section
+  -4.6025e+00 +2.0071e+00 -1.7792e-01 -1.5057e-01 +4.0076e-02 -2.9468e-03
+# 
+K 
+# Eb         rs    w
+  +0.02460   +1.00 +0.0000e+00
+# coefficients for absorption cross-section
+  +4.1007e+00 -3.1536e+00 -1.3406e-01 +4.2513e-02 -7.9446e-03 +6.2374e-04
+# 
+# xray   rate        irate       hv
+*

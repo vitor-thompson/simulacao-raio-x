@@ -1,0 +1,80 @@
+ P
+# Z   A      rho
+  15  30.98  1.820e+00
+# coefficients for coherent scattering cross-section
+  +9.8566e-01 -2.9881e-01 +4.0079e-02 -1.2629e-01 +2.3862e-02 -1.4279e-03
+# coefficients for incoherent scattering cross-section
+  -4.4989e+00 +1.7638e+00 -5.5182e-01 +1.3037e-01 -2.0760e-02 +1.3081e-03
+# 
+K 
+# Eb         rs    w
+  +2.14550   +10.01 +5.5477e-02
+# coefficients for absorption cross-section
+  +9.0880e+00 -1.2559e+00 -8.8450e-01 +2.4528e-01 -3.7581e-02 +2.3423e-03
+# 
+# xray   rate        irate       hv
+  KL2    +3.2219e-01 +3.2219e-01 +2.013  
+  KL3    +6.3526e-01 +9.5744e-01 +2.013  
+  KM2    +1.4290e-02 +9.7173e-01 +2.146  
+  KM3    +2.8270e-02 +1.0000e+00 +2.146  
+*
+L1
+# Eb         rs    w
+  +0.18930   +1.00 +3.9000e-05
+# coefficients for absorption cross-section
+  +6.5854e+00 -2.0226e+00 -2.4388e-01 +2.7679e-02 -3.6733e-03 +3.3738e-04
+# 
+# xray   rate        irate       hv
+  L1L2   +1.4269e-01 +1.4269e-01 +0.057  
+  L1L3   +2.9017e-01 +4.3286e-01 +0.057  
+  L1M1   +1.2566e-10 +4.3286e-01 +0.189  
+  L1M2   +1.9305e-01 +6.2590e-01 +0.189  
+  L1M3   +3.7410e-01 +1.0000e+00 +0.189  
+*
+L2
+# Eb         rs    w
+  +0.13220   +1.00 +3.1000e-05
+# coefficients for absorption cross-section
+  +5.9019e+00 -3.0306e+00 -1.9096e-01 +4.4866e-03 +8.8759e-04 +1.4232e-04
+# 
+# xray   rate        irate       hv
+  L2L3   +7.0295e-10 +7.0295e-10 +0.000  
+  L2M1   +9.9991e-01 +9.9991e-01 +0.132  
+  L2M2   +4.1726e-11 +9.9991e-01 +0.132  
+  L2M3   +8.8589e-05 +1.0000e+00 +0.132  
+*
+L3
+# Eb         rs    w
+  +0.13220   +1.00 +3.1000e-05
+# coefficients for absorption cross-section
+  +6.5760e+00 -3.0294e+00 -2.0803e-01 +1.4646e-02 -1.8350e-03 +3.6432e-04
+# 
+# xray   rate        irate       hv
+  L3M1   +9.9991e-01 +9.9991e-01 +0.132  
+  L3M2   +4.4110e-05 +9.9996e-01 +0.132  
+  L3M3   +4.3491e-05 +1.0000e+00 +0.132  
+*
+M1
+# Eb         rs    w
+  +0.00000   +1.00 +6.3000e-06
+# coefficients for absorption cross-section
+  +4.2484e+00 -2.0956e+00 -1.8470e-01 +6.9257e-03 -2.7058e-04 +1.2473e-04
+# 
+# xray   rate        irate       hv
+*
+M2
+# Eb         rs    w
+  +0.00000   +1.00 +0.0000e+00
+# coefficients for absorption cross-section
+  +2.3961e+00 -2.9488e+00 -2.0882e-01 +4.8141e-03 +1.2893e-03 +9.9782e-05
+# 
+# xray   rate        irate       hv
+*
+M3
+# Eb         rs    w
+  +0.00000   +1.00 +0.0000e+00
+# coefficients for absorption cross-section
+  +3.0706e+00 -2.9487e+00 -2.2542e-01 +1.4271e-02 -1.2007e-03 +3.0180e-04
+# 
+# xray   rate        irate       hv
+*
