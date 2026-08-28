@@ -4,129 +4,153 @@
 #include <math.h>
 
 typedef struct {
+  char   linha[6];      // Nome da transicao de Raio-X (ex: K-L3, KL3)
+  double prob;          // Probabilidade de transicao (taxa/rate)
+  double proba;         // Probabilidade acumulada (irate)
+  double energia;       // Energia do foton emitido hv (em keV)
+} fluorescencia;        // Estrutura de dados para linhas de fluorescencia
 
-  char      simb[6];                                                // Nome do subnivel;
-  double    Eb;                                                     // Energia de ligacao (Binding Energy - Eb, em keV ou eV);                                                                         
-  double    rs;                                                     // Raio de espalhamento / fator de forma ou parametro de escala (rs);
-  double    w;                                                      // Largura de linha / peso estatistico de transicao (w);
-  double    coef[6];                                                // Vetor dinâmico para coeficientes adicionais de atenuacao/absorcao;
+typedef struct {
+  char      simb[6];     // Nome do subnivel (ex: K, L1, L2, L3)
+  double    Eb;          // Energia de ligacao (Binding Energy, em keV)
+  double    rs;          // Raio de espalhamento / fator de forma
+  double    w;           // Largura de linha / rendimento de fluorescencia
+  double    coef[6];     // Coeficientes de absorcao fotoeletrica (Array fixo de 6 posicoes)
+  
+  int Nf;                // Quantidade de linhas de fluorescencia deste subnivel
+  fluorescencia *xrf;    // Ponteiro para o array dinamico de fluorescencias
+} subnivel;              // Estrutura de dados do subnivel atomico
 
-} subnivel;                                                         // Estrutura de Dados;                                                                    
-                                                                                                                            
-typedef struct {                                                                                                              
-                                                                                                                              
-  char   simb[3];                                                   // Simbolo quimico;  
-  int    Z;                                                         // Z   (Numero Atomico);   
-  double A;                                                         // A   (Massa Atomica);
-  double rho;                                                       // rho (Densidade);
-  double coer[6];                                                   // Coeficientes Coerente[6];
-  double incoer[6];                                                 // Coeficientes Incoerente[6];
+typedef struct {
+  char   simb[3];        // Simbolo quimico (ex: "B", "C", "Fe")
+  int    Z;              // Numero atomico (Z)
+  double A;              // Massa atomica (A)
+  double rho;            // Densidade (g/cm³)
+  double coer[6];        // Coeficientes de espalhamento coerente (Rayleigh)
+  double incoer[6];      // Coeficientes de espalhamento incoerente (Compton)
   
-  subnivel *ene;                                                    // Ponteiro;
-  
-  int Ns;                                                           // Numero de subniveis;                                                                 
+  int Ns;                // Numero total de subniveis do atomo
+  subnivel *ene;         // Ponteiro para o array dinamico de subniveis
+} atomo;                 // Estrutura de dados principal do atomo
 
-} atomo;                                                            // Estrutura de Dados;
-                                                                                                                                                                                   
-                                                                                        
-int main(void){                                                                       
-                                                                              
-  FILE *arq;                                                        // Ponteiro;
-  atomo atm;                                                        // variavel do tipo atomo;
-  char lixo[64];                                                    // descarte de string
-  int i, pos;                                                       // variaveis;                                                              
+int main(void) {
+  FILE *arq;             // Ponteiro que guarda o endereco da estrutura FILE
+  atomo atm;             // Variavel principal que armazena o atomo
+  char lixo[64];         // Buffer temporario para descartar linhas/cabecalhos
+  int i, j, pos;         // Variaveis de controle de loops e posicao no arquivo
   
-  arq = fopen("/home/administrador/Documentos/vitor_modelagem/dbase/U.txt","rt"); // abre arquivo;
-                                                                      
-//----------------------------------------------------------------------------------------------------// 
-  fscanf(arq,"%s\n", atm.simb);                                     // leitura do simbolo quimico;
-                                                                              
-  fgets(lixo, 64, arq);                                             // descarte da linha 2;
-                                                                            
-  fscanf(arq, "%d %lf %lf ", &atm.Z, &atm.A, &atm.rho);             // leitura de Z, A, rho;
-                                                                            
-  fgets(lixo, 64, arq);                                             // descarte a linha 4
-                                                                        
-  for(i = 0; i < 6; i++){                                             
-    fscanf(arq,"%lf ", &atm.coer[i]);                                         
-  }                                                                 // leitura dos 6 coeficientes coerentes; 
-                                                                            
-  fgets(lixo, 64, arq);                                             // descarte da linha 6;  
-                                                                    
-  for(i = 0; i < 6; i++){                                           
-    fscanf(arq,"%lf ", &atm.incoer[i]);                               
-  }                                                                 // leitura dos 6 coeficientes incoerentes;
+  // Abertura do arquivo da base de dados (use caminho relativo na entrega final)
+  arq = fopen("data/B.txt", "rt"); 
+  if (arq == NULL) {
+    printf("Erro ao abrir o arquivo!\n");
+    return 1;
+  }
+
+  // --- LEITURA DOS DADOS DO ATOMO ---
+  fscanf(arq, "%s\n", atm.simb);                              // Le o simbolo quimico
+  fgets(lixo, 64, arq);                                       // Descarta cabecalho de Z, A, rho
+  fscanf(arq, "%d %lf %lf ", &atm.Z, &atm.A, &atm.rho);       // Le Z, A e rho
+  fgets(lixo, 64, arq);                                       // Descarta cabecalho de coerentes
   
-  fgets(lixo, 64, arq);                                             // descarte da linha 8;  
+  for(i = 0; i < 6; i++) {
+    fscanf(arq, "%lf ", &atm.coer[i]);                        // Le os 6 coeficientes coerentes
+  }
   
-  pos = ftell(arq);                                                 // Marca a possição do marcador;
-  printf("pos= %d\n", pos);
+  fgets(lixo, 64, arq);                                       // Descarta cabecalho de incoerentes
   
-  atm.Ns = 0;                                                       // Numero iniciais de subniveis
-  while (1) {                           
-    
-    fgets(lixo, 64, arq);                                           // Descarte de estrings;
-    
-    if(feof(arq)!=0){
-    
-      break;
-    
-    }                                                               // Verifica se chegou ao final do arquivo;
-    
-    if (lixo[0]=='*') {
-    
-      atm.Ns++;
-    
-    }                                                               // Se ler '*' soma +1
+  for(i = 0; i < 6; i++) {
+    fscanf(arq, "%lf ", &atm.incoer[i]);                      // Le os 6 coeficientes incoerentes
+  }
   
-  }                                                                 // conta quantos '*' tem em um arquivo enquanto não chegar no final do arquivo            
+  fgets(lixo, 64, arq);                                       // Descarta linha separadora
   
-  printf("atm.Ns = %d\n", atm.Ns);
+  // --- CONTAGEM DE SUBNIVEIS (NS) ---
+  pos = ftell(arq);                                           // Salva a posicao inicial dos subniveis
+  atm.Ns = 0;                                                 // Inicializa o contador de subniveis
+  
+  while (fgets(lixo, 64, arq) != NULL) {                      // Le linha por linha ate o fim do arquivo
+    if (lixo[0] == '*') {
+      atm.Ns++;                                               // Se a linha comeca com '*', conta +1 subnivel
+    }
+  }
+
+  // Alocacao dinamica da memoria para os subniveis (requer compilador C++)
+  atm.ene = new subnivel[atm.Ns];
+  
+  // Retorna o ponteiro do arquivo para onde comecam os subniveis
+  fseek(arq, pos, SEEK_SET);
+  
+  // --- LEITURA DOS SUBNIVEIS ---
+  for (i = 0; i < atm.Ns; i++) {
+    fscanf(arq, "%s ", atm.ene[i].simb);                      // Le o nome do subnivel (ex: K, L1)
+    fgets(lixo, 64, arq);                                     // Descarta cabecalho de Eb, rs, w
+    fscanf(arq, "%lf %lf %lf ", &atm.ene[i].Eb, &atm.ene[i].rs, &atm.ene[i].w); // Le Eb, rs, w
+    fgets(lixo, 64, arq);                                     // Descarta cabecalho dos coeficientes
     
-//----------------------------------------------------------------------------------------------------//  
-                                                                    
-  fclose(arq);                                                      //fecha arquivo
-  
-  
+    for(j = 0; j < 6; j++) {
+      fscanf(arq, "%lf ", &atm.ene[i].coef[j]);               // Le os 6 coeficientes de absorcao
+    }
+    
+    // --- LEITURA DA FLUORESCENCIA DO SUBNIVEL ---
+    fgets(lixo, 64, arq);                                     // Descarta linha '#'
+    fgets(lixo, 64, arq);                                     // Descarta cabecalho '# xray rate irate hv'
+    
+    pos = ftell(arq);                                         // Salva posicao onde iniciam as linhas XRF
+    atm.ene[i].Nf = 0;                                        // Inicializa contador de fluorescencias
+    
+    while(fgets(lixo, 64, arq) != NULL) {
+      if (lixo[0] == '*') {                                   // O caractere '*' indica o fim deste subnivel
+        break;
+      }
+      atm.ene[i].Nf++;                                        // Incrementa contador de linhas de fluorescencia
+    }
+    
+    // Aloca a tabela dinamica de fluorescencia para o subnivel i
+    atm.ene[i].xrf = new fluorescencia[atm.ene[i].Nf];
+    
+    // Retorna para o inicio dos dados de fluorescencia
+    fseek(arq, pos, SEEK_SET);
+    
+    for (j = 0; j < atm.ene[i].Nf; j++) {
+      fscanf(arq, "%s %lf %lf %lf ", 
+             atm.ene[i].xrf[j].linha, 
+             &atm.ene[i].xrf[j].prob, 
+             &atm.ene[i].xrf[j].proba, 
+             &atm.ene[i].xrf[j].energia);                     // Le dados de cada transicao XRF
+    }
+    
+    fgets(lixo, 64, arq);                                     // Consome a linha contendo '*' no final do bloco
+  }
+
+  fclose(arq);                                                // Fecha o arquivo de dados
+
+  // --- IMPRESSAO DOS RESULTADOS ---
   printf("Simb: %s\n", atm.simb);
   printf("Z: %d\tA: %lf\trho: %lf\n", atm.Z, atm.A, atm.rho);
+  
   printf("Coer:\n");
-  for(i = 0; i < 6; i++){
-    printf("%lf ", atm.coer[i]);} 
-  printf("\n");
-  printf("Incoer:\n");
-  for(i = 0; i < 6; i++){
-  printf("%lf ", atm.incoer[i]);}
-  printf("\n");  
-  return 0;
-}
+  for(i = 0; i < 6; i++) printf("%lf ", atm.coer[i]);
+  printf("\nIncoer:\n");
+  for(i = 0; i < 6; i++) printf("%lf ", atm.incoer[i]);
+  printf("\n\n");
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  for (i = 0; i < atm.Ns; i++) {
+    printf("Subnivel: %s\n", atm.ene[i].simb);
+    printf("Eb: %lf | rs: %lf | w: %lf\n", atm.ene[i].Eb, atm.ene[i].rs, atm.ene[i].w);
+    
+    printf("Coef: ");
+    for (j = 0; j < 6; j++) printf("%lf ", atm.ene[i].coef[j]);
+    printf("\n");
+    
+    if (atm.ene[i].Nf > 0) {
+      printf("\n  linha\t\tprob\t\tproba\t\tenergia\n");
+      for (j = 0; j < atm.ene[i].Nf; j++) {
+        printf("  %s\t\t%lf\t%lf\t%lf\n", 
+               atm.ene[i].xrf[j].linha, 
+               atm.ene[i].xrf[j].prob, 
+               atm.ene[i].xrf[j].proba, 
+               atm.ene[i].xrf[j].energia);
+      }
+      printf("\n");
+    }
+  }
