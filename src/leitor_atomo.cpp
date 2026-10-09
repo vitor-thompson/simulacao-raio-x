@@ -1,348 +1,305 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
 #include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
 
 //---------------------------------------------------class fluorescencia-----------------------------
 
-// Classe que armazena os dados de transição de fluorescência de raios X (XRF)
 class fluorescencia {
 private:
-  char   linha[6];      // Nome da linha de emissão XRF (ex: K-L3)
-  double prob;          // Probabilidade individual da transição
-  double proba;         // Probabilidade acumulada da transição
-  double energia;       // Energia do fóton emitido pela transição (em keV)
+    char   linha[16];   // Aumentado para evitar estouro de buffer
+    double prob;        // Probabilidade individual
+    double proba;       // Probabilidade acumulada
+    double energia;     // Energia (keV)
 
 public:
-  // Métodos Getters e Setters para manipulação dos atributos privados da fluorescência
-  void          Linha (const char* nome)   { strcpy(linha, nome); } // Copia o nome do parâmetro para a variável membro linha
-  char*         Linha (void)               { return linha; }        // Retorna o ponteiro para a string com o nome da linha
-  
-  void          Prob  (double e)           { prob = e; }            // Atribui o valor da probabilidade individual
-  double        Prob  (void)               { return prob; }         // Retorna o valor da probabilidade individual
-  
-  void          ProbA (double e)           { proba = e; }           // Atribui o valor da probabilidade acumulada
-  double        ProbA (void)               { return proba; }        // Retorna o valor da probabilidade acumulada
-  
-  void          E     (double e)           { energia = e; }         // Atribui a energia da linha de fluorescência
-  double        E     (void)               { return energia; }      // Retorna a energia da linha de fluorescência
-};                        
+    fluorescencia() : prob(0.0), proba(0.0), energia(0.0) {
+        linha[0] = '\0';
+    }
+
+    void        Linha(const char* nome) { strncpy(linha, nome, sizeof(linha) - 1); linha[sizeof(linha) - 1] = '\0'; }
+    char*       Linha(void)             { return linha; }
+    
+    void        Prob(double e)          { prob = e; }
+    double      Prob(void) const        { return prob; }
+    
+    void        ProbA(double e)         { proba = e; }
+    double      ProbA(void) const       { return proba; }
+    
+    void        E(double e)             { energia = e; }
+    double      E(void) const           { return energia; }
+};                     
 
 //----------------------------------------------------class subnivel-----------------------------------
 
-// Classe que representa um subnível eletrônico atômico (ex: K, L1, L2, L3...)
 class subnivel {
 private:
-  char      simb[6];    // Nome/símbolo do subnível
-  double    Eb;         // Energia de ligação (Binding Energy - Eb) em keV
-  double    rs;         // Raio de espalhamento / fator de forma atômico
-  double    w;          // Rendimento de fluorescência ou largura de linha
-  double    coef[6];    // Coeficientes do polinômio para a seção de choque fotoelétrica
-  
-  int Nf;               // Número total de linhas de fluorescência associadas a este subnível
-  fluorescencia *xrf;   // Ponteiro para o array dinâmico de objetos da classe fluorescencia
-  
+    char          simb[16];   
+    double        Eb;         // Energia de ligação
+    double        rs;         // Raio de espalhamento
+    double        w;          // Largura / Rendimento
+    double        coef[6];    // Coeficientes do polinômio fotoelétrico
+    
+    int           Nf;         // Quantidade de linhas
+    fluorescencia *xrf;       // Array dinâmico de fluorescência
+    
 public: 
-  // Getters e Setters das propriedades do subnível
-  void          Simb   (const char *nome)  { strcpy(simb, nome); } // Copia o nome do subnível
-  const char*   Simb   (void)              { return simb; }        // Retorna o nome do subnível
-  
-  void          GetEb  (double e)          { Eb = e; }             // Atribui a energia de ligação Eb
-  double        GetEb  (void)              { return Eb; }          // Retorna a energia de ligação Eb
-  
-  void          Rs     (double r)          { rs = r; }             // Atribui o raio de espalhamento/fator de forma
-  double        Rs     (void)              { return rs; }          // Retorna o raio de espalhamento/fator de forma
-  
-  void          W      (double e)          { w = e; }              // Atribui a largura/rendimento de fluorescência
-  double        W      (void)              { return w; }           // Retorna a largura/rendimento de fluorescência
-  
-  // Define a quantidade de linhas de fluorescência e aloca dinamicamente a memória necessária
-  void          GetNf (int n)              { Nf = n; xrf = new fluorescencia[Nf]; }
-  int           GetNf (void)               { return Nf; }          // Retorna a quantidade de linhas alocadas
-  
-  // Preenche os dados de uma linha específica dentro do array de fluorescências
-  void   XRF(int pos, const char* l, double p, double pa, double e) {
-    xrf[pos].Linha(l);  // Define a nomenclatura da linha na posição 'pos'
-    xrf[pos].Prob(p);   // Define a probabilidade individual na posição 'pos'
-    xrf[pos].ProbA(pa); // Define a probabilidade acumulada na posição 'pos'
-    xrf[pos].E(e);      // Define a energia em keV na posição 'pos'
-  }
-  
-  // Métodos de acesso direto aos elementos do vetor dinâmico de fluorescência
-  char   *Linha (int pos) { return xrf[pos].Linha(); } // Retorna o nome da linha do índice informado
-  double Prob  (int pos)  { return xrf[pos].Prob(); }  // Retorna a probabilidade do índice informado
-  double ProbA (int pos)  { return xrf[pos].ProbA(); } // Retorna a probabilidade acumulada do índice informado
-  double E     (int pos)  { return xrf[pos].E(); }     // Retorna a energia do índice informado
-  
-  // Copia o vetor de 6 coeficientes passado por parâmetro para o atributo membro da classe
-  void   Coef (double *c) {
-    for (int i = 0; i < 6; i++) { // Loop executado 6 vezes para copiar cada termo do ajuste polinomial
-      coef[i] = c[i]; 
+    subnivel() : Eb(0.0), rs(0.0), w(0.0), Nf(0), xrf(nullptr) {
+        simb[0] = '\0';
+        for (int i = 0; i < 6; i++) coef[i] = 0.0;
     }
-  }
+
+    // Destrutor para liberação da memória
+    ~subnivel() {
+        if (xrf != nullptr) {
+            delete[] xrf;
+            xrf = nullptr;
+        }
+    }
+
+    void        Simb(const char *nome)  { strncpy(simb, nome, sizeof(simb) - 1); simb[sizeof(simb) - 1] = '\0'; }
+    const char* Simb(void) const        { return simb; }
+    
+    void        GetEb(double e)         { Eb = e; }
+    double      GetEb(void) const       { return Eb; }
+    
+    void        Rs(double r)            { rs = r; }
+    double      Rs(void) const          { return rs; }
+    
+    void        W(double e)             { w = e; }
+    double      W(void) const           { return w; }
+    
+    void GetNf(int n) { 
+        if (xrf != nullptr) delete[] xrf;
+        Nf = n; 
+        xrf = (Nf > 0) ? new fluorescencia[Nf] : nullptr; 
+    }
+    int  GetNf(void) const              { return Nf; }
+    
+    void XRF(int pos, const char* l, double p, double pa, double e) {
+        if (pos >= 0 && pos < Nf && xrf != nullptr) {
+            xrf[pos].Linha(l);
+            xrf[pos].Prob(p);
+            xrf[pos].ProbA(pa);
+            xrf[pos].E(e);
+        }
+    }
+    
+    char*  Linha(int pos) const { return xrf[pos].Linha(); }
+    double Prob (int pos) const { return xrf[pos].Prob(); }
+    double ProbA(int pos) const { return xrf[pos].ProbA(); }
+    double E    (int pos) const { return xrf[pos].E(); }
+    
+    void Coef(double *c) {
+        for (int i = 0; i < 6; i++) coef[i] = c[i];
+    }
                                             
-  double Coef (int pos)  { return coef[pos]; } // Retorna um coeficiente específico pela sua posição no vetor
-  
-  // Calcula a seção de choque fotoelétrica parcial deste subnível para uma dada energia incident (hv)
-  double SecaoChoqueAbsFotoeletrica(double hv) {
-    double s = 0, p = 1, lnE = log(hv); // Inicializa a soma acumulada 's', a potência 'p' (hv^0 = 1) e calcula ln(hv)
+    double Coef(int pos) const { return coef[pos]; }
     
-    // Avalia o polinômio: s = c0 + c1*ln(E) + c2*(ln(E))^2 + ... + c5*(ln(E))^5
-    for (int i = 0; i < 6; i++) {
-      s += coef[i] * p; // Acumula o termo atual do polinômio na variável 's'
-      p *= lnE;         // Eleva lnE à próxima potência para a seguinte iteração
+    double SecaoChoqueAbsFotoeletrica(double hv) const {
+        double s = 0.0, p = 1.0, lnE = log(hv);
+        for (int i = 0; i < 6; i++) {
+            s += coef[i] * p;
+            p *= lnE;
+        }
+        return exp(s);
     }
-    
-    return exp(s); // Retorna a seção de choque na escala linear aplicando a função exponencial
-  }
 };
 
 //-------------------------------------------------Class atomo-----------------------------------
 
-// Classe principal que representa o elemento atômico e suas propriedades físico-químicas
 class atomo {
 private: 
-  char   simb[3];       // Símbolo químico do elemento (ex: "Ag", "B")
-  int    Na;            // Número Atômico Z (quantidade de prótons)
-  double Ma;            // Massa Atômica A (em u.m.a ou g/mol)
-  double rho;           // Densidade do elemento puro (em g/cm³)
-  double coer[6];       // Coeficientes do espalhamento coerente (Rayleigh)
-  double incoer[6];     // Coeficientes do espalhamento incoerente (Compton)  
-  int Ns;               // Número total de subníveis eletrônicos cadastrados
-  subnivel *ene;        // Ponteiro para o array dinâmico contendo os subníveis
+    char      simb[8];     
+    int       Na;          // Z
+    double    Ma;          // A
+    double    rho;         // Densidade
+    double    coer[6];     // Coeficientes Coerentes (Rayleigh)
+    double    incoer[6];   // Coeficientes Incoerentes (Compton)  
+    int       Ns;          // Número de subníveis
+    subnivel  *ene;        // Array dinâmico de subníveis
     
 public:  
-  // Encapsulamento / Getters e Setters do átomo
-  void          Simb(const char *S) { strcpy(simb, S); } // Define o símbolo químico
-  const char*   Simb(void)          { return simb; }     // Retorna o símbolo químico
-  
-  void          Z(int n)            { Na = n; }          // Define o número atômico Z
-  int           Z(void)             { return Na; }       // Retorna o número atômico Z
-  
-  void          A(double m)         { Ma = m; }          // Define a massa atômica A
-  double        A(void)             { return Ma; }       // Retorna a massa atômica A
-  
-  void          Rho(double r)       { rho = r; }         // Define a densidade
-  double        Rho(void)           { return rho; }      // Retorna a densidade
-  
-  // Aloca dinamicamente o vetor de subníveis eletrônicos
-  void          GetNs (int n)       { Ns = n; ene = new subnivel[Ns]; }
-  int           GetNs (void)        { return Ns; }       // Retorna a quantidade de subníveis
-  
-  // Protótipo da função que lê e analisa o arquivo de dados
-  void LerArquivo(const char *Nome_arq);
-  
-  // Exibe todos os parâmetros carregados do arquivo formatados no terminal
-  void ImprimirDados(void) {
-    // Imprime os dados gerais do elemento químico
-    printf("Simb: %s\n", simb);
-    printf("Z: %d\tA: %lf\trho: %lf\n", Na, Ma, rho);
-    
-    // Imprime o vetor de coeficientes do espalhamento coerente
-    printf("Coer:\n");
-    for(int i = 0; i < 6; i++) printf("|%lf ", coer[i]);
-    
-    // Imprime o vetor de coeficientes do espalhamento incoerente
-    printf("\nIncoer:\n");
-    for(int i = 0; i < 6; i++) printf("|%lf ", incoer[i]);
-    printf("\n\n");
-
-    // Itera sobre todos os subníveis alocados no átomo
-    for (int i = 0; i < Ns; i++) {
-      printf("Subnivel: %s\n", ene[i].Simb()); // Imprime a identificação do subnível
-      printf("Eb: %lf | rs: %lf | w: %lf\n", ene[i].GetEb(), ene[i].Rs(), ene[i].W()); // Imprime as propriedades físicas do subnível
-      
-      // Imprime os coeficientes fotoelétricos do subnível atual
-      printf("coef: ");
-      for (int j = 0; j < 6; j++) printf("|%lf ", ene[i].Coef(j));
-      printf("\n\n");
-
-      // Se existirem linhas de fluorescência cadastradas para este subnível, imprime a tabela
-      if (ene[i].GetNf() > 0) {
-        printf("\nlinha\t  prob\t     proba      energia\n");
-        printf("-----------------------------------------\n");
-        for (int j = 0; j < ene[i].GetNf(); j++) {
-          printf("%s   |%lf   |%lf   |%lf\n", 
-                 ene[i].Linha(j), 
-                 ene[i].Prob(j), 
-                 ene[i].ProbA(j), 
-                 ene[i].E(j));
-          printf("-----------------------------------------\n");
+    atomo() : Na(0), Ma(0.0), rho(0.0), Ns(0), ene(nullptr) {
+        simb[0] = '\0';
+        for(int i = 0; i < 6; i++) {
+            coer[i] = 0.0;
+            incoer[i] = 0.0;
         }
-        printf("\n"); 
-      }
     }
-  }
-  
-  // --- Métodos de Cálculo de Seção de Choque ---
-  
-  // Calcula a seção de choque de espalhamento elástico (Rayleigh) para a energia hv
-  double SecaoChoqueElastico(double hv) {
-    double s = 0, p = 1, lnE = log(hv); // Inicializa acumulador, fator de potência e calcula o logaritmo natural de hv
+
+    // Destrutor da classe atomo
+    ~atomo() {
+        if (ene != nullptr) {
+            delete[] ene;
+            ene = nullptr;
+        }
+    }
+
+    void        Simb(const char *S) { strncpy(simb, S, sizeof(simb) - 1); simb[sizeof(simb) - 1] = '\0'; }
+    const char* Simb(void) const    { return simb; }
     
-    // Avalia o polinômio logarítmico para o espalhamento coerente
-    for (int i = 0; i < 6; i++) {
-      s += coer[i] * p; // Soma o produto do coeficiente pela potência atual de ln(hv)
-      p *= lnE;         // Atualiza a potência para a próxima iteração
-    }
-    return exp(s); // Eleva 'e' à potência resultante do ajuste polinomial
-  }
-  
-  // Calcula a seção de choque de espalhamento inelástico (Compton) para a energia hv
-  double SecaoChoqueIneElastico(double hv) {
-    double s = 0, p = 1, lnE = log(hv); // Inicializa variáveis para o ajuste da curva Compton
+    void        Z(int n)            { Na = n; }
+    int         Z(void) const       { return Na; }
     
-    // Avalia o polinômio logarítmico para o espalhamento incoerente
-    for (int i = 0; i < 6; i++) {
-      s += incoer[i] * p; // Soma o produto do coeficiente pela potência de ln(hv)            
-      p *= lnE;          // Incrementa a ordem da potência
-    }
-    return exp(s); // Retorna o valor calculado aplicando a exponencial
-  }
-  
-  // Calcula a seção de choque fotoelétrica total somando a contribuição dos subníveis fotoeletricamente ativos
-  double SecaoChoqueAbsFotoeletrica(double hv) {
-    double s = 0; // Inicializa a seção de choque total acumulada com zero
+    void        A(double m)         { Ma = m; }
+    double      A(void) const       { return Ma; }
     
-    for (int i = 0; i < Ns; i++) { 
-      // Condição física: a absorção no subnível só ocorre se a energia do fóton incident for maior ou igual à energia de ligação
-      if (ene[i].GetEb() <= hv) {
-        s += ene[i].SecaoChoqueAbsFotoeletrica(hv); // Acumula a seção de choque do subnível
-      }
+    void        Rho(double r)       { rho = r; }
+    double      Rho(void) const     { return rho; }
+    
+    void GetNs(int n) { 
+        if (ene != nullptr) delete[] ene;
+        Ns = n; 
+        ene = (Ns > 0) ? new subnivel[Ns] : nullptr; 
     }
-    return s; // Retorna o total acumulado para a absorção fotoelétrica
-  }
+    int  GetNs(void) const          { return Ns; }
+    
+    void LerArquivo(const char *Nome_arq);
+    
+    double SecaoChoqueElastico(double hv) const {
+        double s = 0.0, p = 1.0, lnE = log(hv);
+        for (int i = 0; i < 6; i++) {
+            s += coer[i] * p;
+            p *= lnE;
+        }
+        return exp(s);
+    }
+    
+    double SecaoChoqueIneElastico(double hv) const {
+        double s = 0.0, p = 1.0, lnE = log(hv);
+        for (int i = 0; i < 6; i++) {
+            s += incoer[i] * p;            
+            p *= lnE;
+        }
+        return exp(s);
+    }
+    
+    double SecaoChoqueAbsFotoeletrica(double hv) const {
+        double s = 0.0;
+        for (int i = 0; i < Ns; i++) { 
+            if (ene[i].GetEb() <= hv) {
+                s += ene[i].SecaoChoqueAbsFotoeletrica(hv);
+            }
+        }
+        return s;
+    }
 };
 
-// --- IMPLEMENTAÇÃO DO MÉTODO DE LEITURA DO ARQUIVO ---
-// Lê a estrutura do arquivo de dados espectrais e carrega as tabelas na memória
+// --- IMPLEMENTAÇÃO DA LEITURA DO ARQUIVO ---
+
 void atomo::LerArquivo(const char *Nome_arq) {
-  FILE *arq = fopen(Nome_arq, "rt"); // Abre o arquivo especificado no modo de leitura de texto ("rt")
-  if (!arq) { // Verifica se houve falha na abertura do arquivo (ex: caminho incorreto)
-    printf("Erro ao abrir arquivo %s\n", Nome_arq);
-    return; // Interrompe a execução do método
-  }
-
-  // Declaração de variáveis auxiliares temporárias para leitura do arquivo
-  char lixo[64], linha[10];
-  int i, j, pos, Nf;
-  double e, r, w;
-  double prob, proba, energia;
-  double coef[6];
-
-  // --- Lendo Dados Principais do Átomo ---
-  fscanf(arq, "%s\n", simb);                    // Lê o símbolo químico do elemento
-  fgets(lixo, 64, arq);                         // Lê e descarta a linha de cabeçalho do arquivo
-  fscanf(arq, "%d %lf %lf ", &Na, &Ma, &rho);   // Lê o número atômico Z, a massa A e a densidade rho
-  fgets(lixo, 64, arq);                         // Lê e descarta linha de comentários
-  
-  // Lê os 6 coeficientes do ajuste polinomial para espalhamento coerente
-  for(i = 0; i < 6; i++) fscanf(arq, "%lf ", &coer[i]);
-  fgets(lixo, 64, arq);                         // Descarta a linha divisória
-  
-  // Lê os 6 coeficientes do ajuste polinomial para espalhamento incoerente
-  for(i = 0; i < 6; i++) fscanf(arq, "%lf ", &incoer[i]);
-  fgets(lixo, 64, arq);                         // Descarta a linha divisória
-
-  // --- Primeira Passagem no Arquivo: Contagem do total de Subníveis ---
-  pos = ftell(arq); // Armazena a posição atual do ponteiro de leitura no arquivo
-  Ns = 0;           // Inicializa o contador de subníveis
-  
-  // Percorre o arquivo contando quantas linhas iniciam com '*' (marcador do início do bloco de subnível)
-  while (fgets(lixo, 64, arq) != NULL) {
-    if (lixo[0] == '*') Ns++; // Incrementa o total de subníveis encontrados
-  }
-
-  GetNs(Ns);                 // Executa a alocação dinâmica do vetor de subníveis 'ene' com tamanho Ns
-  fseek(arq, pos, SEEK_SET); // Reposiciona o ponteiro de leitura do arquivo de volta ao início dos subníveis
-
-  // --- Segunda Passagem no Arquivo: Leitura detalhada dos Subníveis ---
-  for (i = 0; i < Ns; i++) {
-    fscanf(arq, "%s ", lixo); // Lê a string identificadora do subnível
-    ene[i].Simb(lixo);        // Armazena a identificação no objeto do subnível
-    
-    fgets(lixo, 64, arq);     // Descarta a linha de cabeçalho
-    
-    // Lê as propriedades do subnível: energia de ligação (Eb), raio (rs) e largura de linha (w)
-    fscanf(arq, "%lf %lf %lf ", &e, &r, &w); 
-    ene[i].GetEb(e), ene[i].Rs(r), ene[i].W(w); // Atribui os dados lidos
-    
-    fgets(lixo, 64, arq);     // Descarta linha de comentário intermediária
-    
-    // Lê os 6 coeficientes fotoelétricos associados ao subnível atual
-    for(j = 0; j < 6; j++) {
-      fscanf(arq, "%lf ", &coef[j]);
-    }
-    ene[i].Coef(coef); // Salva o array de coeficientes no objeto do subnível
-    
-    // --- Lendo os Dados de Fluorescência do Subnível Atual ---
-    fgets(lixo, 64, arq);     // Descarta linha de separação
-    fgets(lixo, 64, arq);     // Descarta o cabeçalho das colunas de fluorescência
-    
-    pos = ftell(arq);         // Salva a posição do ponteiro antes da contagem das linhas de fluorescência
-    
-    Nf = 0;                   // Reseta o contador de linhas de fluorescência do subnível
-    
-    // Conta o número de transições de fluorescência até alcançar o marcador '*' de fim do bloco
-    while(fgets(lixo, 64, arq) != NULL) {
-      if (lixo[0] == '*') break; // Encontrou o final das linhas de fluorescência deste subnível
-      Nf++;                      // Incrementa o número de transições encontradas
+    FILE *arq = fopen(Nome_arq, "rt");
+    if (!arq) {
+        std::printf("Erro ao abrir arquivo: %s\n", Nome_arq);
+        return;
     }
 
-    ene[i].GetNf(Nf);          // Aloca dinamicamente a memória do vetor de fluorescência do subnível
-       
-    fseek(arq, pos, SEEK_SET); // Restaura o ponteiro para o início da lista de linhas de fluorescência
+    char lixo[128], linha[16];
+    int i, j, Nf;
+    long pos;
+    double e, r, w;
+    double prob, proba, energia;
+    double coef[6];
 
-    // Lê os valores de cada transição de fluorescência do subnível
-    for (j = 0; j < ene[i].GetNf(); j++) {
-      fscanf(arq, "%s %lf %lf %lf ", 
-             linha, 
-             &prob, 
-             &proba, 
-             &energia);
-      ene[i].XRF(j, linha, prob, proba, energia); // Insere os dados lidos no objeto de fluorescência
+    if (fscanf(arq, "%7s\n", simb) != 1) { fclose(arq); return; }
+    if (!fgets(lixo, sizeof(lixo), arq)) { fclose(arq); return; }
+    if (fscanf(arq, "%d %lf %lf ", &Na, &Ma, &rho) != 3) { fclose(arq); return; }
+    if (!fgets(lixo, sizeof(lixo), arq)) { fclose(arq); return; }
+    
+    for (i = 0; i < 6; i++) {
+        if (fscanf(arq, "%lf ", &coer[i]) != 1) break;
     }
-    fgets(lixo, 64, arq);     // Lê e descarta a linha que contém o caractere '*'
-  }
+    if (!fgets(lixo, sizeof(lixo), arq)) { fclose(arq); return; }
+    
+    for (i = 0; i < 6; i++) {
+        if (fscanf(arq, "%lf ", &incoer[i]) != 1) break;
+    }
+    if (!fgets(lixo, sizeof(lixo), arq)) { fclose(arq); return; }
 
-  fclose(arq);                 // Fecha o ponteiro do arquivo aberto
+    // Primeira Passagem: Contagem dos Subníveis
+    pos = ftell(arq);
+    Ns = 0;
+    while (fgets(lixo, sizeof(lixo), arq) != NULL) {
+        if (lixo[0] == '*') Ns++;
+    }
+
+    GetNs(Ns);
+    fseek(arq, pos, SEEK_SET);
+
+    // Segunda Passagem: Carregamento
+    for (i = 0; i < Ns; i++) {
+        if (fscanf(arq, "%127s ", lixo) != 1) break;
+        ene[i].Simb(lixo);
+        
+        if (!fgets(lixo, sizeof(lixo), arq)) break;
+        if (fscanf(arq, "%lf %lf %lf ", &e, &r, &w) != 3) break;
+        
+        ene[i].GetEb(e);
+        ene[i].Rs(r);
+        ene[i].W(w);
+        
+        if (!fgets(lixo, sizeof(lixo), arq)) break;
+        
+        for (j = 0; j < 6; j++) {
+            if (fscanf(arq, "%lf ", &coef[j]) != 1) break;
+        }
+        ene[i].Coef(coef);
+        
+        if (!fgets(lixo, sizeof(lixo), arq)) break;
+        if (!fgets(lixo, sizeof(lixo), arq)) break;
+        
+        pos = ftell(arq);
+        Nf = 0;
+        
+        while (fgets(lixo, sizeof(lixo), arq) != NULL) {
+            if (lixo[0] == '*') break;
+            Nf++;
+        }
+
+        ene[i].GetNf(Nf);
+        fseek(arq, pos, SEEK_SET);
+
+        for (j = 0; j < ene[i].GetNf(); j++) {
+            if (fscanf(arq, "%15s %lf %lf %lf ", linha, &prob, &proba, &energia) == 4) {
+                ene[i].XRF(j, linha, prob, proba, energia);
+            }
+        }
+        if (!fgets(lixo, sizeof(lixo), arq)) break;
+    }
+
+    fclose(arq);
 }
 
-
 // --- FUNÇÃO PRINCIPAL ---
+
 int main(void) {
-  
-  // Declaração de variáveis para varredura de energia e coeficientes de atenuação
-  double hv, e = 20.0; // Define o limite máximo da energia incidente 'e' em keV (20.0 keV)
-  double sigma_e, sigma_i, tau; // Variáveis para seções de choque: elástica (Rayleigh), inelástica (Compton) e fotoelétrica (tau)
-  double mu; // Coeficiente de atenuação total (soma das seções de choque)
-  
-  atomo atm; // Instancia o objeto 'atm' referente à classe 'atomo'
-  
-  // Executa o carregamento dos dados do elemento Prata (Ag) a partir da base de dados física
-  atm.LerArquivo("/home/administrador/Documentos/vitor_modelagem/dbase/Ag.txt");
-  
-  // Imprime os parâmetros estruturais do elemento lido
-  atm.ImprimirDados();
-  
-  // Imprime o cabeçalho da tabela de resultados físicos calculados
-  printf("    hv |  sigma_e|  sigma_i|    tau   |     mu\n");
-  printf("-------|---------|---------|----------|--------------\n");
-  
-  // Laço de repetição: Varia a energia incidente (hv) de 1.0 keV até 20.0 keV em passos de 1.0 keV
-  for (hv = 1.0; hv <= e; hv += 1.0) {
-  
-    sigma_e = atm.SecaoChoqueElastico(hv);       // Calcula a seção de choque elástica (Rayleigh) em cm²/g
-    sigma_i = atm.SecaoChoqueIneElastico(hv);     // Calcula a seção de choque inelástica (Compton) em cm²/g
-    tau     = atm.SecaoChoqueAbsFotoeletrica(hv);  // Calcula a seção de choque fotoelétrica total em cm²/g
-    mu      = sigma_e + sigma_i + tau;           // Calcula o coeficiente de atenuação total pela soma dos três processos
+    double hv = 5.0;              // Energia do fóton incidente (keV)
+    double x = 0.01;              // Espessura do meio (cm)
     
-    // Imprime no console os valores calculados formatados em colunas alinhadas
-    printf("%7.3lf| %8.5lf| %8.5lf| %9.3lf| %9.3lf\n", hv, sigma_e, sigma_i, tau, mu);
-    printf("-------|---------|---------|----------|--------------\n");
+    atomo atm;
+    atm.LerArquivo("/home/administrador/Documentos/vitor_modelagem/dbase/C.txt");
+    
+    // Cálculos de seções de choque (cm²/g)
+    double sigma_e = atm.SecaoChoqueElastico(hv);
+    double sigma_i = atm.SecaoChoqueIneElastico(hv);
+    double tau     = atm.SecaoChoqueAbsFotoeletrica(hv);
+    
+    // Coeficiente de atenuação mássico total (\mu/\rho em cm²/g)
+    double mu = sigma_e + sigma_i + tau;
+    
+    // Cálculo das probabilidades de interação no caminho x
+    double Ptrans = exp(-mu * atm.Rho() * x);
+    double Pee    = (mu > 0) ? (sigma_e * (1.0 - Ptrans) / mu) : 0.0;
+    double Pei    = (mu > 0) ? (sigma_i * (1.0 - Ptrans) / mu) : 0.0;
+    double Pabs   = (mu > 0) ? (tau     * (1.0 - Ptrans) / mu) : 0.0;
 
-  }
+    std::printf("sigma_e: %lf\tsigma_i: %lf\ttau: %lf\n\n", sigma_e, sigma_i, tau);
+    std::printf("Ptrans = %e\n", Ptrans);
+    std::printf("Pee    = %e\n", Pee);
+    std::printf("Pei    = %e\n", Pei);
+    std::printf("Pabs   = %e\n", Pabs);
 
-  return 0; // Retorna 0 para o sistema operacional informando que o programa finalizou sem erros
+    return 0;
 }
