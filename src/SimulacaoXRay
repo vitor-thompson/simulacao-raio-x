@@ -1,0 +1,570 @@
+#define _CRT_SECURE_NO_WARNINGS
+#pragma warning(disable : 6031) // Ignora avisos de retorno ignorado no Visual Studio
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <time.h>
+#include <iostream>
+
+// Definições de constantes matemáticas caso o MSVC não reconheça nativamente
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#ifndef M_PI_2
+#define M_PI_2 1.57079632679489661923
+#endif
+
+// ==========================================
+// CLASSE: fluorescencia
+// ==========================================
+class fluorescencia {
+private:
+    char linha[32];
+    double prob, proba, energia;
+
+public:
+    fluorescencia() : prob(0.0), proba(0.0), energia(0.0) {
+        linha[0] = '\0';
+    }
+
+    void  Linha(const char* nome) {
+        strncpy(linha, nome, sizeof(linha) - 1);
+        linha[sizeof(linha) - 1] = '\0';
+    }
+    char* Linha(void) { return linha; }
+
+    void   Prob(double e) { prob = e; }
+    double Prob(void) { return prob; }
+
+    void   Proba(double e) { proba = e; }
+    double Proba(void) { return proba; }
+
+    void   E(double e) { energia = e; }
+    double E(void) { return energia; }
+};
+
+// ==========================================
+// CLASSE: subnivel
+// ==========================================
+class subnivel {
+private:
+    char simb[16];
+    double eb, rs, w;
+    double coef[6];
+    int nf;
+    fluorescencia* xrf;
+
+public:
+    subnivel() : eb(0.0), rs(0.0), w(0.0), nf(0), xrf(nullptr) {
+        simb[0] = '\0';
+        for (int i = 0; i < 6; i++) coef[i] = 0.0;
+    }
+
+    ~subnivel() {
+        if (xrf != nullptr) {
+            delete[] xrf;
+            xrf = nullptr;
+        }
+    }
+
+    void  Simb(const char* nome) {
+        strncpy(simb, nome, sizeof(simb) - 1);
+        simb[sizeof(simb) - 1] = '\0';
+    }
+    char* Simb(void) { return simb; }
+
+    void   Eb(double e) { eb = e; }
+    double Eb(void) { return eb; }
+
+    void   RS(double r) { rs = r; }
+    double RS(void) { return rs; }
+
+    void   W(double e) { w = e; }
+    double W(void) { return w; }
+
+    void   NF(int n) {
+        if (xrf != nullptr) delete[] xrf;
+        nf = n;
+        xrf = (nf > 0) ? new fluorescencia[nf] : nullptr;
+    }
+    int    NF(void) { return nf; }
+
+    void   XRF(int pos, const char* l, double p, double pa, double e) {
+        if (pos >= 0 && pos < nf && xrf != nullptr) {
+            xrf[pos].Linha(l);
+            xrf[pos].Prob(p);
+            xrf[pos].Proba(pa);
+            xrf[pos].E(e);
+        }
+    }
+
+    char* Linha(int pos) { return xrf[pos].Linha(); }
+    double Prob(int pos) { return xrf[pos].Prob(); }
+    double Proba(int pos) { return xrf[pos].Proba(); }
+    double E(int pos) { return xrf[pos].E(); }
+
+    void   Coef(double* c) {
+        for (int i = 0; i < 6; i++) coef[i] = c[i];
+    }
+    double Coef(int pos) { return coef[pos]; }
+
+    double SecaoChoqueAbsFotoeletrica(double hv) {
+        double s = 0, p = 1, lnE = log(hv);
+        for (int i = 0; i < 6; i++) {
+            s += coef[i] * p;
+            p *= lnE;
+        }
+        return exp(s);
+    }
+};
+
+// ==========================================
+// CLASSE: atomo
+// ==========================================
+class atomo {
+private:
+    char simb[8];
+    int  na;
+    double ma, rho;
+    double coer[6], incoer[6];
+    subnivel* ene;
+    int ns;
+
+public:
+    atomo() : na(0), ma(0.0), rho(0.0), ns(0), ene(nullptr) {
+        simb[0] = '\0';
+        for (int i = 0; i < 6; i++) {
+            coer[i] = 0.0;
+            incoer[i] = 0.0;
+        }
+    }
+
+    ~atomo() {
+        if (ene != nullptr) {
+            delete[] ene;
+            ene = nullptr;
+        }
+    }
+
+    void   Simb(const char* s) {
+        strncpy(simb, s, sizeof(simb) - 1);
+        simb[sizeof(simb) - 1] = '\0';
+    }
+    char* Simb(void) { return simb; }
+
+    void          Z(unsigned char n) { na = n; }
+    unsigned char Z(void) { return na; }
+
+    void   A(double m) { ma = m; }
+    double A(void) { return ma; }
+
+    void   Rho(double d) { rho = d; }
+    double Rho(void) { return rho; }
+
+    void   NS(int n) {
+        if (ene != nullptr) delete[] ene;
+        ns = n;
+        ene = (ns > 0) ? new subnivel[ns] : nullptr;
+    }
+    int    NS(void) { return ns; }
+
+    double Eb(int i) { return ene[i].Eb(); }
+    double W(int i) { return ene[i].W(); }
+    double NF(int i) { return ene[i].NF(); }
+
+    double E(int i, int j) { return ene[i].E(j); }
+    double Prob(int i, int j) { return ene[i].Prob(j); }
+
+    void   LerArquivo(const char* nome);
+
+    double SecaoChoqueElastico(double hv) {
+        double s = 0, p = 1, lnE = log(hv);
+        for (int i = 0; i < 6; i++) {
+            s += coer[i] * p;
+            p *= lnE;
+        }
+        return exp(s);
+    }
+
+    double SecaoChoqueInelastico(double hv) {
+        double s = 0, p = 1, lnE = log(hv);
+        for (int i = 0; i < 6; i++) {
+            s += incoer[i] * p;
+            p *= lnE;
+        }
+        return exp(s);
+    }
+
+    double SecaoChoqueAbsFotoeletrica(double hv) {
+        double f, s = 0;
+        for (int i = 0; i < ns; i++) {
+            if (ene[i].Eb() <= hv) {
+                f = ene[i].SecaoChoqueAbsFotoeletrica(hv);
+                s += f;
+            }
+        }
+        return s;
+    }
+
+    void Imprimir(void) {
+        int i, j;
+        printf("Simb: %s\n", simb);
+        printf("Z: %d\tA: %lf\trho: %lf\n", na, ma, rho);
+        for (i = 0; i < 6; i++) printf("%lf ", coer[i]);
+        printf("\n");
+        for (i = 0; i < 6; i++) printf("%lf ", incoer[i]);
+        printf("\n");
+
+        for (i = 0; i < ns; i++) {
+            printf("%s\n", ene[i].Simb());
+            printf("%lf\t%lf\t%lf\n", ene[i].Eb(), ene[i].RS(), ene[i].W());
+            for (j = 0; j < 6; j++) printf("%lf ", ene[i].Coef(j));
+            printf("\n");
+            if (ene[i].NF() > 0) {
+                printf("Linha\tProb\tProbA\tEnergia\n");
+                for (j = 0; j < ene[i].NF(); j++)
+                    printf("%s %lf %lf %lf\n", ene[i].Linha(j), ene[i].Prob(j),
+                        ene[i].Proba(j), ene[i].E(j));
+            }
+        }
+    }
+};
+
+void atomo::LerArquivo(const char* nome) {
+    FILE* fp;
+    char  lixo[64], linha[32];
+    int   i, j, nf;
+    long  pos;
+    double e, r, w;
+    double prob, proba, energia;
+    double coef[6];
+
+    fp = fopen(nome, "rt");
+    if (fp == NULL) {
+        printf("ERRO CRITICO: Nao foi possivel abrir o arquivo: %s\n", nome);
+        return;
+    }
+
+    (void)fscanf(fp, "%7s", simb);
+    fgets(lixo, sizeof(lixo), fp);
+
+    (void)fscanf(fp, "%d %lf %lf", &na, &ma, &rho);
+    fgets(lixo, sizeof(lixo), fp);
+
+    for (i = 0; i < 6; i++) (void)fscanf(fp, "%lf", &coer[i]);
+    fgets(lixo, sizeof(lixo), fp);
+
+    for (i = 0; i < 6; i++) (void)fscanf(fp, "%lf", &incoer[i]);
+    fgets(lixo, sizeof(lixo), fp);
+
+    pos = ftell(fp);
+
+    ns = 0;
+    while (fgets(lixo, sizeof(lixo), fp) != NULL) {
+        if (lixo[0] == '*') ns++;
+    }
+
+    NS(ns);
+    fseek(fp, pos, SEEK_SET);
+
+    for (i = 0; i < ns; i++) {
+        (void)fscanf(fp, "%31s", lixo);
+        ene[i].Simb(lixo);
+
+        fgets(lixo, sizeof(lixo), fp);
+
+        (void)fscanf(fp, "%lf %lf %lf", &e, &r, &w);
+        ene[i].Eb(e); ene[i].RS(r); ene[i].W(w);
+
+        fgets(lixo, sizeof(lixo), fp);
+        for (j = 0; j < 6; j++) (void)fscanf(fp, "%lf", &coef[j]);
+        ene[i].Coef(coef);
+
+        fgets(lixo, sizeof(lixo), fp);
+        fgets(lixo, sizeof(lixo), fp);
+
+        pos = ftell(fp);
+
+        nf = 0;
+        while (fgets(lixo, sizeof(lixo), fp) != NULL) {
+            if (lixo[0] == '*' || lixo[0] == '\0') break;
+            nf++;
+        }
+
+        ene[i].NF(nf);
+        fseek(fp, pos, SEEK_SET);
+
+        for (j = 0; j < ene[i].NF(); j++) {
+            if (fgets(lixo, sizeof(lixo), fp) != NULL) {
+                if (lixo[0] == '*') break;
+                (void)sscanf(lixo, "%31s %lf %lf %lf", linha, &prob, &proba, &energia);
+                ene[i].XRF(j, linha, prob, proba, energia);
+            }
+        }
+
+        while (fgets(lixo, sizeof(lixo), fp) != NULL) {
+            if (lixo[0] == '*') break;
+        }
+    }
+
+    fclose(fp);
+}
+
+// ==========================================
+// CLASSE: tubo_rx
+// ==========================================
+class tubo_rx {
+private:
+    double E0, dE;
+    int    Z;
+    double A;
+
+    double m, J, eta, logZ, rho_zm, x, f_corr;
+    double omega, t, i_cor, phi, epsilon;
+
+    double* spe, * speacum;
+    int    nc;
+    atomo  atm;
+
+    void Continuo(int n) {
+        int i_idx;
+        double E;
+        double cte = 1.35e9;
+        double U0, logU0, rho_z, tau_E_j, fa;
+
+        nc = n;
+        dE = E0 / nc;
+        spe = new double[nc];
+
+        for (i_idx = 0; i_idx < nc; i_idx++) {
+            E = (i_idx + 1) * dE;
+            U0 = E0 / E;
+            logU0 = log(U0);
+
+            rho_z = rho_zm * logU0 * (0.49269 - 1.09870 * eta + 0.78557 * eta * eta) /
+                (0.70256 - 1.09865 * eta + 1.00460 * eta * eta + logU0);
+
+            tau_E_j = atm.SecaoChoqueAbsFotoeletrica(E);
+            fa = U0 > 1 ? (1 - exp(-tau_E_j * 2 * rho_z * sin(phi) / sin(epsilon))) /
+                (tau_E_j * 2 * rho_z * sin(phi) / sin(epsilon)) : 1.0;
+
+            spe[i_idx] = t * cte * Z * pow(E0 / E - 1, x) * fa;
+        }
+        spe[0] = 0;
+    }
+
+    void Discreto(void) {
+        int k, l;
+        double w_jk, p_jkl, zk, bk;
+        double E_jk, E_jkl, tau_jkl;
+        double U0_jk, logU0, rho_z, fa_jkl, S_jk_1, C_jkl, R;
+        int    ch;
+
+        for (k = 0; k <= (atm.NS() <= 8 ? atm.NS() : 8); k++) {
+            E_jk = atm.Eb(k);
+            if (E_jk < E0) {
+                w_jk = atm.W(k);
+
+                U0_jk = E0 / E_jk;
+                logU0 = log(U0_jk);
+                rho_z = rho_zm * logU0 * (0.49269 - 1.09870 * eta + 0.78557 * eta * eta) /
+                    (0.70256 - 1.09865 * eta + 1.00460 * eta * eta + logU0);
+                R = 1 - 0.0081517 * Z + 3.613e-5 * Z * Z + 0.009583 * Z * exp(-U0_jk) + 0.001141 * E0;
+
+                switch (k) {
+                case 0: C_jkl = 1e13 * (4.697 + 0.134 * U0_jk - 0.00268 * U0_jk * U0_jk) /
+                    (1 - exp(-7 * (U0_jk - 1)));
+                    zk = 2; bk = 0.35;
+                    break;
+                case 1: C_jkl = f_corr * 0.71e13; zk = 8; bk = 0.25; break;
+                case 2: C_jkl = f_corr * 2.7e13; zk = 8; bk = 0.25; break;
+                case 3: C_jkl = 4.94e13; zk = 8; bk = 0.25; break;
+                case 4:
+                case 5: C_jkl = 0; break;
+                case 6: C_jkl = 2.32e13; zk = 1.2; bk = 0.7; break;
+                case 7: C_jkl = 15.8e13; zk = 1.2; bk = 0.7; break;
+                case 8: C_jkl = 20.5e13; zk = 1.2; bk = 0.7; break;
+                }
+
+                for (l = 0; l < atm.NF(k); l++) {
+                    E_jkl = atm.E(k, l);
+                    p_jkl = atm.Prob(k, l);
+
+                    tau_jkl = atm.SecaoChoqueAbsFotoeletrica(E_jkl);
+                    fa_jkl = (1 - exp(-tau_jkl * 2 * rho_z * sin(phi) / sin(epsilon))) /
+                        (tau_jkl * 2 * rho_z * sin(phi) / sin(epsilon));
+
+                    S_jk_1 = (zk * bk / Z) *
+                        (1.0 + U0_jk * (logU0 - 1.0)) *
+                        (1.0 + 16.05 * sqrt(J / E_jk) * (sqrt(U0_jk) * logU0 + 2.0 * (1.0 - sqrt(U0_jk))) /
+                            (1.0 + U0_jk * (logU0 - 1.0)));
+
+                    ch = int(E_jkl / dE);
+
+                    // PROTEÇÃO: Evita estourar o limite do vetor spe
+                    if (ch >= 0 && ch < nc) {
+                        double e_val = t * C_jkl * R * S_jk_1 * w_jk * p_jkl * fa_jkl;
+                        spe[ch] += e_val;
+                    }
+                }
+            }
+        }
+    }
+
+public:
+    tubo_rx() : E0(0), dE(0), Z(0), A(0), m(0), J(0), eta(0), logZ(0), rho_zm(0), x(0), f_corr(0),
+        omega(0), t(0), i_cor(0), phi(0), epsilon(0), spe(nullptr), speacum(nullptr), nc(0) {
+    }
+
+    ~tubo_rx() {
+        if (spe != nullptr) { delete[] spe; spe = nullptr; }
+        if (speacum != nullptr) { delete[] speacum; speacum = nullptr; }
+    }
+
+    void Anodo(double e, int n, const char* str) {
+        int idx;
+        double sum, isum;
+        E0 = e;
+        atm.LerArquivo(str);
+
+        Z = atm.Z();
+        x = 1.109 - 0.00435 * Z + 0.00175 * E0;
+        A = atm.A();
+        m = 0.1382 - 0.9211 / sqrt(Z);
+        J = 0.0135 * Z;
+        logZ = log(Z);
+        eta = pow(E0, m) *
+            (0.1904 - 0.2236 * logZ + 0.1292 * logZ * logZ - 0.0149 * logZ * logZ * logZ);
+        rho_zm = (A / Z) *
+            (0.787e-5 * sqrt(J) * pow(E0, 1.5) + 0.735e-6 * E0 * E0);
+        f_corr = (Z <= 80) ? -0.4814 + 0.03781 * Z - 2.413e-4 * Z * Z : 1;
+
+        omega = 0.00367;
+        t = 1e-6;
+        i_cor = 1;
+
+        phi = M_PI_2;
+        epsilon = 35 * M_PI / 180;
+
+        Continuo(n);
+        Discreto();
+
+        for (sum = 0, idx = 0; idx < nc; idx++) sum += spe[idx];
+        isum = 1 / sum;
+        for (idx = 0; idx < nc; idx++) spe[idx] *= isum;
+
+        speacum = new double[nc];
+        speacum[0] = spe[0];
+        for (idx = 1; idx < nc; idx++)
+            speacum[idx] = speacum[idx - 1] + spe[idx];
+    }
+
+    void Imprimir(void) {
+        for (int k = 0; k < nc; k++)
+            printf("%5.3lf\t%5.3e\n", (k + 1) * dE, spe[k]);
+    }
+
+    void Imprimir(const char* nome) {
+        FILE* fp = fopen(nome, "wt");
+        if (fp != NULL) {
+            for (int k = 0; k < nc; k++)
+                fprintf(fp, "%5.3lf\t%5.3e\n", (k + 1) * dE, spe[k]);
+            fclose(fp);
+        }
+    }
+
+    double Emissao(void) {
+        int idx;
+        double eps = rand() / (double)RAND_MAX;
+        for (idx = 0; idx < nc; idx++)
+            if (speacum[idx] > eps) break;
+        return (idx / (double)nc) * E0;
+    }
+};
+
+// ==========================================
+// FUNÇÃO PRINCIPAL (main)
+// ==========================================
+int main(int argc, char* argv[]) {
+    char dir[128], arq[128];
+    int     i;
+    double  hv = 5.0;
+    double  sigma_e, sigma_i, tau, mu;
+    double  x = 0.01;
+    double  Ptrans, Pee, Pei, Pabs;
+    double  eps;
+
+    srand((unsigned int)time(NULL));
+
+    atomo   atm;
+    tubo_rx f;
+
+    if (argc != 4) {
+        printf("Uso correto:\n");
+        printf("\t<programa> \"caminho/para/dbase\" Anodo Alvo\n");
+        printf("Exemplo no Visual Studio (Argumentos do Comando):\n");
+        printf("\tdbase Ag C\n");
+        return 0;
+    }
+
+    strcpy(dir, argv[1]);
+    strcat(dir, "/");
+
+    strcpy(arq, dir);
+    strcat(arq, argv[2]);
+    strcat(arq, ".txt");
+
+    printf("Configurando tubo de raio-X com anodo de %s...\n", argv[2]);
+    f.Anodo(25, 1000, arq);
+    f.Imprimir("espectro.txt");
+
+    strcpy(arq, dir);
+    strcat(arq, argv[3]);
+    strcat(arq, ".txt");
+
+    atm.LerArquivo(arq);
+    atm.Imprimir();
+
+    printf("Carregando informacao sobre material alvo: %s.\n\n", argv[3]);
+
+    for (i = 0; i < 10; i++) {
+        hv = f.Emissao();
+        printf("Foton %d -> hv = %lf keV\n", i + 1, hv);
+
+        sigma_e = atm.SecaoChoqueElastico(hv);
+        sigma_i = atm.SecaoChoqueInelastico(hv);
+        tau = atm.SecaoChoqueAbsFotoeletrica(hv);
+
+        mu = sigma_e + sigma_i + tau;
+
+        printf("\tSigma_e: %lf\tSigma_i: %lf\tTau: %lf\n", sigma_e, sigma_i, tau);
+
+        Ptrans = exp(-mu * atm.Rho() * x);
+        Pee = (mu > 0) ? sigma_e * (1.0 - Ptrans) / mu : 0.0;
+        Pei = (mu > 0) ? sigma_i * (1.0 - Ptrans) / mu : 0.0;
+        Pabs = (mu > 0) ? tau * (1.0 - Ptrans) / mu : 0.0;
+
+        printf("\tPtrans = %e\n", Ptrans);
+        printf("\tPee    = %e\n", Pee);
+        printf("\tPei    = %e\n", Pei);
+        printf("\tPabs   = %e\n", Pabs);
+
+        eps = rand() / (double)RAND_MAX;
+        if (eps < Ptrans) {
+            printf("\t\t-> Destino: Transmissao\n");
+        }
+        else if (eps < Ptrans + Pee) {
+            printf("\t\t-> Destino: Espalhamento Elastico (Rayleigh)\n");
+        }
+        else if (eps < Ptrans + Pee + Pei) {
+            printf("\t\t-> Destino: Espalhamento Inelastico (Compton)\n");
+        }
+        else {
+            printf("\t\t-> Destino: Absorcao Fotoelectrica\n");
+        }
+    }
+
+    return 0;
+}
